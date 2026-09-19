@@ -22,8 +22,7 @@ env:
   ZIG_VERSION: "0.15.2"
   # golem10 has 15GB RAM — limit parallelism to avoid OOM during WebKit link
   JOBS: "4"
-  # Use the large spindle drive for working directory
-  WORK_DIR: "/mnt/spindrive/opencode-build"
+  WORK_DIR: "./opencode-build"
 
 jobs:
   build:
@@ -42,7 +41,7 @@ jobs:
         run: |
           mkdir -p "$WORK_DIR"
           echo "Work directory: $WORK_DIR"
-          df -h /mnt/spindrive
+          df -h .
 
       # =============================================
       # Install build dependencies
