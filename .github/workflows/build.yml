@@ -47,13 +47,15 @@ jobs:
           echo "Work directory: $WORK_DIR"
           df -h "$GITHUB_WORKSPACE"
 
-          # scripts/env.sh (self-hosted) may still hardcode /mnt/spindrive.
+          # scripts/env.sh may still contain a self-hosted /mnt path.
           # Rewrite those paths so later steps do not mkdir/write there.
           if [ -d scripts ]; then
             while IFS= read -r f; do
-              sed -i "s|/mnt/spindrive[^ \"']*|${WORK_DIR}|g" "$f"
-              echo "Rewrote /mnt/spindrive in $f"
-            done < <(grep -RIl '/mnt/spindrive' scripts || true)
+              # Replace only the old absolute path, without consuming surrounding
+              # shell quotes (which would make env.sh syntactically invalid).
+              perl -pi -e "s{/mnt/[^\\s\\\"']*}{\$ENV{WORK_DIR}}g" "$f"
+              echo "Rewrote the legacy work path in $f"
+            done < <(grep -RIl '/mnt/' scripts || true)
           fi
 
       # =============================================
@@ -84,13 +86,14 @@ jobs:
 
           if [ -d scripts ]; then
             while IFS= read -r f; do
-              sed -i "s|/opt/android-ndk[^ \"']*|${NDK_DIR}|g" "$f"
-              echo "Rewrote /opt/android-ndk in $f"
+              # Keep the quotes around shell assignments intact.
+              perl -pi -e "s{/opt/android-ndk[^\\s\\\"']*}{\$ENV{NDK_DIR}}g" "$f"
+              echo "Rewrote the legacy NDK path in $f"
             done < <(grep -RIl '/opt/android-ndk' scripts || true)
           fi
 
-          # Re-apply after source scripts/env.sh — that file may export
-          # WORK_DIR=/mnt/spindrive or ANDROID_NDK_HOME=/opt/android-ndk.
+           # Re-apply after source scripts/env.sh — that file may export
+           # values intended for the original self-hosted runner.
           cat > "$GITHUB_WORKSPACE/.gha-overrides.sh" <<EOF
           export WORK_DIR="$WORK_DIR"
           export ANDROID_NDK_HOME="$NDK_DIR"
